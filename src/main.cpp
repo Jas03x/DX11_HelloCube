@@ -1,6 +1,10 @@
 
 #include <Windows.h>
 
+#include <wrl.h>
+#include <d3d11.h>
+#include <dxgi1_3.h>
+
 #include <cstdio>
 
 enum {
@@ -48,6 +52,8 @@ public:
 
 	INT  Initialize();
 	VOID Uninitialize();
+
+	HWND GetWindowHandle();
 };
 
 Window* Window::m_Instance = NULL;
@@ -165,6 +171,95 @@ VOID Window::Uninitialize()
 	UnregisterClassA(CLASS_NAME, m_hInstance);
 }
 
+HWND Window::GetWindowHandle()
+{
+	return m_hWindow;
+}
+
+class Renderer
+{
+private:
+	Microsoft::WRL::ComPtr<ID3D11Device>        m_pDevice;
+	Microsoft::WRL::ComPtr<ID3D11DeviceContext> m_pContext; // immediate context
+	Microsoft::WRL::ComPtr<IDXGISwapChain>      m_pSwapChain;
+
+public:
+	Renderer();
+
+	INT  Initialize(HWND hWnd);
+	VOID Uninitialize();
+};
+
+Renderer::Renderer()
+{
+}
+
+INT Renderer::Initialize(HWND hWnd)
+{
+	INT status = 0;
+
+	D3D_FEATURE_LEVEL levels[] = { D3D_FEATURE_LEVEL_11_1 };
+	D3D_FEATURE_LEVEL level;
+
+	if (status == 0)
+	{
+		status = D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, levels, 1, D3D11_SDK_VERSION, &m_pDevice, &level, &m_pContext);
+
+		if (FAILED(status))
+		{
+			WriteToConsole("error 0x%X: could not create device/context\n", status);
+		}
+	}
+
+	if (status == 0)
+	{
+		DXGI_SWAP_CHAIN_DESC desc;
+		ZeroMemory(&desc, sizeof(DXGI_SWAP_CHAIN_DESC));
+		desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		desc.SampleDesc.Count = 1;
+		desc.SampleDesc.Quality = 0;
+		desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		desc.BufferCount = 2;
+		desc.OutputWindow = hWnd;
+		desc.Windowed = TRUE;
+		desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+
+		Microsoft::WRL::ComPtr<IDXGIDevice3> dxgiDevice;
+		Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
+		Microsoft::WRL::ComPtr<IDXGIFactory> factory;
+
+		m_pDevice.As(&dxgiDevice);
+		status = dxgiDevice->GetAdapter(&adapter);
+
+		if (SUCCEEDED(status))
+		{
+			adapter->GetParent(IID_PPV_ARGS(&factory));
+
+			status = factory->CreateSwapChain(m_pDevice.Get(), &desc, &m_pSwapChain);
+			if (FAILED(status))
+			{
+				WriteToConsole("error 0x%X: could not create swap chain\n");
+			}
+		}
+		else
+		{
+			WriteToConsole("error 0x%X: could not get adapter\n");
+		}
+	}
+
+	if (status == 0)
+	{
+
+	}
+
+	return status;
+}
+
+VOID Renderer::Uninitialize()
+{
+
+}
+
 INT main(INT argc, CHAR* argv[])
 {
 	INT status = 0;
@@ -172,7 +267,9 @@ INT main(INT argc, CHAR* argv[])
 	Window window;
 	status = window.Initialize();
 
-	MSG  msg = {};
+	
+
+	MSG msg = {};
 	while (true)
 	{
 		if (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE) != 0)
