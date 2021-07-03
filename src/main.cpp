@@ -195,6 +195,13 @@ public:
 
 Renderer::Renderer()
 {
+	m_pDevice = NULL;
+	m_pContext = NULL;
+	m_pSwapChain = NULL;
+	m_pBackBuffer = NULL;
+	m_pRenderTarget = NULL;
+	m_pDepthStencilBuffer = NULL;
+	m_pDepthStencilView = NULL;
 }
 
 INT Renderer::Initialize(HWND hWnd)
@@ -204,14 +211,13 @@ INT Renderer::Initialize(HWND hWnd)
 	const D3D_FEATURE_LEVEL levels[] = { D3D_FEATURE_LEVEL_11_1 };
 	
 	D3D_FEATURE_LEVEL level;
-	D3D11_VIEWPORT viewport;
 	D3D11_TEXTURE2D_DESC bbDesc = {};
 
 	if (status == 0)
 	{
 		status = D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, levels, 1, D3D11_SDK_VERSION, &m_pDevice, &level, &m_pContext);
 
-		if (FAILED(status))
+		if (status != 0)
 		{
 			WriteToConsole("error 0x%X: could not create device/context\n", status);
 		}
@@ -242,25 +248,35 @@ INT Renderer::Initialize(HWND hWnd)
 			pDXGIAdapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&pIDXGIFactory));
 
 			status = pIDXGIFactory->CreateSwapChain(m_pDevice, &desc, &m_pSwapChain);
-			if (FAILED(status))
+			if (status != 0)
 			{
-				WriteToConsole("error 0x%X: could not create swap chain\n", status);
+				WriteToConsole("error 0x%X: could not create the swap chain\n", status);
 			}
 		}
 		else
 		{
-			WriteToConsole("error 0x%X: could not get adapter\n", status);
+			WriteToConsole("error 0x%X: could not get the dxgi device's adapter\n", status);
 		}
 	}
 
 	if (status == 0)
 	{
 		status = m_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&m_pBackBuffer));
+
+		if (status != 0)
+		{
+			WriteToConsole("error 0x%X: could not get the swap chain back buffer\n", status);
+		}
 	}
 
 	if (status == 0)
 	{
 		status = m_pDevice->CreateRenderTargetView(m_pBackBuffer, nullptr, &m_pRenderTarget);
+
+		if (status != 0)
+		{
+			WriteToConsole("error 0x%X: could not create the render target view\n", status);
+		}
 	}
 
 	if (status == 0)
@@ -306,6 +322,7 @@ INT Renderer::Initialize(HWND hWnd)
 
 	if (status == 0)
 	{
+		D3D11_VIEWPORT viewport;
 		ZeroMemory(&viewport, sizeof(D3D11_VIEWPORT));
 		viewport.Height = (float) bbDesc.Height;
 		viewport.Width = (float) bbDesc.Width;
@@ -320,7 +337,13 @@ INT Renderer::Initialize(HWND hWnd)
 
 VOID Renderer::Uninitialize()
 {
-
+	m_pDepthStencilView->Release();
+	m_pDepthStencilBuffer->Release();
+	m_pRenderTarget->Release();
+	m_pBackBuffer->Release();
+	m_pSwapChain->Release();
+	m_pContext->Release();
+	m_pDevice->Release();
 }
 
 INT main(INT argc, CHAR* argv[])
@@ -358,6 +381,9 @@ INT main(INT argc, CHAR* argv[])
 			}
 		}
 	}
+
+	renderer.Uninitialize();
+	window.Uninitialize();
 
 	return status;
 }
