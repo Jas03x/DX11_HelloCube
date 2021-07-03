@@ -1,7 +1,6 @@
 
 #include <Windows.h>
 
-#include <wrl.h>
 #include <d3d11.h>
 #include <dxgi1_3.h>
 
@@ -179,9 +178,13 @@ HWND Window::GetWindowHandle()
 class Renderer
 {
 private:
-	Microsoft::WRL::ComPtr<ID3D11Device>        m_pDevice;
-	Microsoft::WRL::ComPtr<ID3D11DeviceContext> m_pContext; // immediate context
-	Microsoft::WRL::ComPtr<IDXGISwapChain>      m_pSwapChain;
+	ID3D11Device*           m_pDevice;
+	ID3D11DeviceContext*    m_pContext;
+	IDXGISwapChain*         m_pSwapChain;
+	ID3D11Texture2D*        m_pBackBuffer;
+	ID3D11RenderTargetView* m_pRenderTarget;
+	ID3D11Texture2D*        m_pDepthStencilBuffer;
+	ID3D11DepthStencilView* m_pDepthStencilView;
 
 public:
 	Renderer();
@@ -198,8 +201,11 @@ INT Renderer::Initialize(HWND hWnd)
 {
 	INT status = 0;
 
-	D3D_FEATURE_LEVEL levels[] = { D3D_FEATURE_LEVEL_11_1 };
+	const D3D_FEATURE_LEVEL levels[] = { D3D_FEATURE_LEVEL_11_1 };
+	
 	D3D_FEATURE_LEVEL level;
+	D3D11_VIEWPORT viewport;
+	D3D11_TEXTURE2D_DESC bbDesc = {};
 
 	if (status == 0)
 	{
@@ -224,32 +230,89 @@ INT Renderer::Initialize(HWND hWnd)
 		desc.Windowed = TRUE;
 		desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
 
-		Microsoft::WRL::ComPtr<IDXGIDevice3> dxgiDevice;
-		Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
-		Microsoft::WRL::ComPtr<IDXGIFactory> factory;
+		IDXGIDevice*  pDXGIDevice = nullptr;
+		IDXGIAdapter* pDXGIAdapter = nullptr;
+		IDXGIFactory* pIDXGIFactory = nullptr;
 
-		m_pDevice.As(&dxgiDevice);
-		status = dxgiDevice->GetAdapter(&adapter);
+		m_pDevice->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&pDXGIDevice));
+		status = pDXGIDevice->GetAdapter(&pDXGIAdapter);
 
-		if (SUCCEEDED(status))
+		if (status == 0)
 		{
-			adapter->GetParent(IID_PPV_ARGS(&factory));
+			pDXGIAdapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&pIDXGIFactory));
 
-			status = factory->CreateSwapChain(m_pDevice.Get(), &desc, &m_pSwapChain);
+			status = pIDXGIFactory->CreateSwapChain(m_pDevice, &desc, &m_pSwapChain);
 			if (FAILED(status))
 			{
-				WriteToConsole("error 0x%X: could not create swap chain\n");
+				WriteToConsole("error 0x%X: could not create swap chain\n", status);
 			}
 		}
 		else
 		{
-			WriteToConsole("error 0x%X: could not get adapter\n");
+			WriteToConsole("error 0x%X: could not get adapter\n", status);
 		}
 	}
 
 	if (status == 0)
 	{
+		status = m_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&m_pBackBuffer));
+	}
 
+	if (status == 0)
+	{
+		status = m_pDevice->CreateRenderTargetView(m_pBackBuffer, nullptr, &m_pRenderTarget);
+	}
+
+	if (status == 0)
+	{
+		m_pBackBuffer->GetDesc(&bbDesc);
+
+		D3D11_TEXTURE2D_DESC depthStencilDesc = {};
+		depthStencilDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		depthStencilDesc.Width = bbDesc.Width;
+		depthStencilDesc.Height = bbDesc.Height;
+		depthStencilDesc.ArraySize = 1;
+		depthStencilDesc.MipLevels = 1;
+		depthStencilDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+		depthStencilDesc.Usage = D3D11_USAGE_DEFAULT;
+		depthStencilDesc.CPUAccessFlags = 0;
+		depthStencilDesc.SampleDesc.Count = 1;
+		depthStencilDesc.SampleDesc.Quality = 0;
+		depthStencilDesc.MiscFlags = 0;
+
+		status = m_pDevice->CreateTexture2D(&depthStencilDesc, nullptr, &m_pDepthStencilBuffer);
+
+		if (status != 0)
+		{
+			WriteToConsole("error 0x%X: could not create depth buffer\n", status);
+		}
+	}
+
+	if (status == 0)
+	{
+		D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc = {};
+		depthStencilViewDesc.Texture2D.MipSlice = 0;
+		depthStencilViewDesc.Format = DXGI_FORMAT_UNKNOWN;
+		depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+		depthStencilViewDesc.Flags = 0;
+
+		status = m_pDevice->CreateDepthStencilView(m_pDepthStencilBuffer, &depthStencilViewDesc, &m_pDepthStencilView);
+		
+		if (status != 0)
+		{
+			WriteToConsole("error 0x%X: could not create depth buffer view\n", status);
+		}
+	}
+
+	if (status == 0)
+	{
+		ZeroMemory(&viewport, sizeof(D3D11_VIEWPORT));
+		viewport.Height = (float) bbDesc.Height;
+		viewport.Width = (float) bbDesc.Width;
+		viewport.MinDepth = 0;
+		viewport.MaxDepth = 1;
+
+		m_pContext->RSSetViewports(1, &viewport);
 	}
 
 	return status;
@@ -265,26 +328,34 @@ INT main(INT argc, CHAR* argv[])
 	INT status = 0;
 	
 	Window window;
+	Renderer renderer;
+
 	status = window.Initialize();
 
-	
-
-	MSG msg = {};
-	while (true)
+	if (status == 0)
 	{
-		if (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE) != 0)
-		{
-			TranslateMessage(&msg);
-			DispatchMessageA(&msg);
+		status = renderer.Initialize(window.GetWindowHandle());
+	}
 
-			if (msg.message == WM_QUIT)
-			{
-				break;
-			}
-		}
-		else
+	if (status == 0)
+	{
+		MSG msg = {};
+		while (true)
 		{
-			// render
+			if (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE) != 0)
+			{
+				TranslateMessage(&msg);
+				DispatchMessageA(&msg);
+
+				if (msg.message == WM_QUIT)
+				{
+					break;
+				}
+			}
+			else
+			{
+				// render
+			}
 		}
 	}
 
