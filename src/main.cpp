@@ -84,7 +84,7 @@ INT Window::Initialize()
 	m_Instance = this;
 	m_hInstance = GetModuleHandleW(NULL);
 
-	if (status == 0)
+	if (SUCCEEDED(status))
 	{
 		WNDCLASSEXA wndClass;
 		wndClass.cbSize = sizeof(WNDCLASSEXA);
@@ -111,7 +111,7 @@ INT Window::Initialize()
 		}
 	}
 
-	if (status == 0)
+	if (SUCCEEDED(status))
 	{
 		RECT r = CalculateWindowRect();
 		
@@ -126,7 +126,7 @@ INT Window::Initialize()
 		}
 	}
 
-	if (status == 0)
+	if (SUCCEEDED(status))
 	{
 		ShowWindow(m_hWindow, SW_SHOW);
 	}
@@ -213,17 +213,17 @@ INT Renderer::Initialize(HWND hWnd)
 	D3D_FEATURE_LEVEL level;
 	D3D11_TEXTURE2D_DESC bbDesc = {};
 
-	if (status == 0)
+	if (SUCCEEDED(status))
 	{
 		status = D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, levels, 1, D3D11_SDK_VERSION, &m_pDevice, &level, &m_pContext);
 
-		if (status != 0)
+		if (FAILED(status))
 		{
 			WriteToConsole("error 0x%X: could not create device/context\n", status);
 		}
 	}
 
-	if (status == 0)
+	if (SUCCEEDED(status))
 	{
 		DXGI_SWAP_CHAIN_DESC desc;
 		ZeroMemory(&desc, sizeof(DXGI_SWAP_CHAIN_DESC));
@@ -243,12 +243,12 @@ INT Renderer::Initialize(HWND hWnd)
 		m_pDevice->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&pDXGIDevice));
 		status = pDXGIDevice->GetAdapter(&pDXGIAdapter);
 
-		if (status == 0)
+		if (SUCCEEDED(status))
 		{
 			pDXGIAdapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&pIDXGIFactory));
 
 			status = pIDXGIFactory->CreateSwapChain(m_pDevice, &desc, &m_pSwapChain);
-			if (status != 0)
+			if (FAILED(status))
 			{
 				WriteToConsole("error 0x%X: could not create the swap chain\n", status);
 			}
@@ -259,27 +259,27 @@ INT Renderer::Initialize(HWND hWnd)
 		}
 	}
 
-	if (status == 0)
+	if (SUCCEEDED(status))
 	{
 		status = m_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&m_pBackBuffer));
 
-		if (status != 0)
+		if (FAILED(status))
 		{
 			WriteToConsole("error 0x%X: could not get the swap chain back buffer\n", status);
 		}
 	}
 
-	if (status == 0)
+	if (SUCCEEDED(status))
 	{
 		status = m_pDevice->CreateRenderTargetView(m_pBackBuffer, nullptr, &m_pRenderTarget);
 
-		if (status != 0)
+		if (FAILED(status))
 		{
 			WriteToConsole("error 0x%X: could not create the render target view\n", status);
 		}
 	}
 
-	if (status == 0)
+	if (SUCCEEDED(status))
 	{
 		m_pBackBuffer->GetDesc(&bbDesc);
 
@@ -298,13 +298,13 @@ INT Renderer::Initialize(HWND hWnd)
 
 		status = m_pDevice->CreateTexture2D(&depthStencilDesc, nullptr, &m_pDepthStencilBuffer);
 
-		if (status != 0)
+		if (FAILED(status))
 		{
 			WriteToConsole("error 0x%X: could not create depth buffer\n", status);
 		}
 	}
 
-	if (status == 0)
+	if (SUCCEEDED(status))
 	{
 		D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc = {};
 		depthStencilViewDesc.Texture2D.MipSlice = 0;
@@ -314,13 +314,13 @@ INT Renderer::Initialize(HWND hWnd)
 
 		status = m_pDevice->CreateDepthStencilView(m_pDepthStencilBuffer, &depthStencilViewDesc, &m_pDepthStencilView);
 		
-		if (status != 0)
+		if (FAILED(status))
 		{
 			WriteToConsole("error 0x%X: could not create depth buffer view\n", status);
 		}
 	}
 
-	if (status == 0)
+	if (SUCCEEDED(status))
 	{
 		D3D11_VIEWPORT viewport;
 		ZeroMemory(&viewport, sizeof(D3D11_VIEWPORT));
@@ -355,12 +355,12 @@ INT main(INT argc, CHAR* argv[])
 
 	status = window.Initialize();
 
-	if (status == 0)
+	if (SUCCEEDED(status))
 	{
 		status = renderer.Initialize(window.GetWindowHandle());
 	}
 
-	if (status == 0)
+	if (SUCCEEDED(status))
 	{
 		MSG msg = {};
 		while (true)
