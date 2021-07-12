@@ -3,8 +3,9 @@
 
 #include <d3d11.h>
 #include <dxgi1_3.h>
+#include <ntstatus.h>
 
-#include <cstdio>
+#include <string>
 
 enum {
 	WIDTH  = 1280,
@@ -185,6 +186,7 @@ private:
 	ID3D11RenderTargetView* m_pRenderTarget;
 	ID3D11Texture2D*        m_pDepthStencilBuffer;
 	ID3D11DepthStencilView* m_pDepthStencilView;
+	ID3D11Debug*            m_DebugInterface;
 
 public:
 	Renderer();
@@ -202,6 +204,7 @@ Renderer::Renderer()
 	m_pRenderTarget = NULL;
 	m_pDepthStencilBuffer = NULL;
 	m_pDepthStencilView = NULL;
+	m_DebugInterface = NULL;
 }
 
 INT Renderer::Initialize(HWND hWnd)
@@ -215,11 +218,22 @@ INT Renderer::Initialize(HWND hWnd)
 
 	if (SUCCEEDED(status))
 	{
-		status = D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, levels, 1, D3D11_SDK_VERSION, &m_pDevice, &level, &m_pContext);
+		status = D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, D3D11_CREATE_DEVICE_DEBUG, levels, 1, D3D11_SDK_VERSION, &m_pDevice, &level, &m_pContext);
 
 		if (FAILED(status))
 		{
 			WriteToConsole("error 0x%X: could not create device/context\n", status);
+		}
+	}
+
+	if (SUCCEEDED(status))
+	{
+		m_pDevice->QueryInterface(__uuidof(ID3D11Debug), reinterpret_cast<void**>(&m_DebugInterface));
+	
+		if (m_DebugInterface == NULL)
+		{
+			status = STATUS_UNSUCCESSFUL;
+			WriteToConsole("error 0x%X: could not get the dx11 debug interface\n", status);
 		}
 	}
 
@@ -257,6 +271,10 @@ INT Renderer::Initialize(HWND hWnd)
 		{
 			WriteToConsole("error 0x%X: could not get the dxgi device's adapter\n", status);
 		}
+
+		pIDXGIFactory->Release();
+		pDXGIAdapter->Release();
+		pDXGIDevice->Release();
 	}
 
 	if (SUCCEEDED(status))
@@ -343,13 +361,14 @@ VOID Renderer::Uninitialize()
 	m_pBackBuffer->Release();
 	m_pSwapChain->Release();
 	m_pContext->Release();
+	m_DebugInterface->Release();
 	m_pDevice->Release();
 }
 
 INT main(INT argc, CHAR* argv[])
 {
 	INT status = 0;
-	
+
 	Window window;
 	Renderer renderer;
 
