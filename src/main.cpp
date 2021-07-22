@@ -1,9 +1,11 @@
 
 #include <Windows.h>
 
+#include <ntstatus.h>
+
 #include <d3d11.h>
 #include <dxgi1_3.h>
-#include <ntstatus.h>
+#include <d3dcompiler.h>
 
 #include <string>
 
@@ -32,6 +34,57 @@ VOID WriteToConsole(const char* fmt, ...)
 	{
 		WriteConsoleA(stdOut, buffer, length, NULL, NULL);
 	}
+}
+
+namespace Data
+{
+	const char* VERTEX_SHADER =
+		"														"
+		"	cbuffer MatrixBuffer : register(b0)					"
+		"	{													"
+		"		matrix mvp;										"
+		"	};													"
+		"														"
+		"	struct VS_INPUT										"
+		"	{													"
+		"		float3 vertex : POSITION;						"
+		"	};													"
+		"														"
+		"	struct VS_OUTPUT									"
+		"	{													"
+		"		float3 vertex : SV_POSITION;					"
+		"	};													"
+		"														"
+		"	VS_OUTPUT main(VS_INPUT input)						"
+		"	{													"
+		"		VS_OUTPUT Output;								"
+		"														"
+		"		float4 vertex = float4(input.vertex, 1.0);		"
+		"		vertex = mul(vertex, mvp);						"
+		"														"
+		"		Output.vertex = vertex;							"
+		"		return Output;									"
+		"	}													";
+
+	const char* PIXEL_SHADER =
+		"														"
+		"	struct PS_INPUT										"
+		"	{													"
+		"		float3 vertex : SV_POSITION;					"
+		"	};													"
+		"														"
+		"	struct PS_OUTPUT									"
+		"	{													"
+		"		float3 color  : SV_TARGET;						"
+		"	};													"
+		"														"
+		"	PS_OUTPUT main(PS_INPUT input)						"
+		"	{													"
+		"		PS_OUTPUT Output;								"
+		"														"
+		"		Output.color  = float3(1,0,1);					"
+		"		return Output;									"
+		"	}													";
 }
 
 class Window
@@ -80,7 +133,7 @@ RECT Window::CalculateWindowRect()
 
 INT Window::Initialize()
 {
-	INT status = 0;
+	INT status = STATUS_SUCCESS;
 
 	m_Instance = this;
 	m_hInstance = GetModuleHandleW(NULL);
@@ -187,12 +240,17 @@ private:
 	ID3D11Texture2D*        m_pDepthStencilBuffer;
 	ID3D11DepthStencilView* m_pDepthStencilView;
 	ID3D11Debug*            m_DebugInterface;
+	ID3D11VertexShader*		m_VertexShader;
+	ID3D11PixelShader*		m_PixelShader;
 
 public:
 	Renderer();
 
 	INT  Initialize(HWND hWnd);
 	VOID Uninitialize();
+
+private:
+	INT CompileShaders();
 };
 
 Renderer::Renderer()
@@ -205,11 +263,13 @@ Renderer::Renderer()
 	m_pDepthStencilBuffer = NULL;
 	m_pDepthStencilView = NULL;
 	m_DebugInterface = NULL;
+	m_VertexShader = NULL;
+	m_PixelShader = NULL;
 }
 
 INT Renderer::Initialize(HWND hWnd)
 {
-	INT status = 0;
+	INT status = STATUS_SUCCESS;
 
 	const D3D_FEATURE_LEVEL levels[] = { D3D_FEATURE_LEVEL_11_1 };
 	
@@ -250,9 +310,9 @@ INT Renderer::Initialize(HWND hWnd)
 		desc.Windowed = TRUE;
 		desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
 
-		IDXGIDevice*  pDXGIDevice = nullptr;
-		IDXGIAdapter* pDXGIAdapter = nullptr;
-		IDXGIFactory* pIDXGIFactory = nullptr;
+		IDXGIDevice*  pDXGIDevice = NULL;
+		IDXGIAdapter* pDXGIAdapter = NULL;
+		IDXGIFactory* pIDXGIFactory = NULL;
 
 		m_pDevice->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&pDXGIDevice));
 		status = pDXGIDevice->GetAdapter(&pDXGIAdapter);
@@ -289,7 +349,7 @@ INT Renderer::Initialize(HWND hWnd)
 
 	if (SUCCEEDED(status))
 	{
-		status = m_pDevice->CreateRenderTargetView(m_pBackBuffer, nullptr, &m_pRenderTarget);
+		status = m_pDevice->CreateRenderTargetView(m_pBackBuffer, NULL, &m_pRenderTarget);
 
 		if (FAILED(status))
 		{
@@ -314,7 +374,7 @@ INT Renderer::Initialize(HWND hWnd)
 		depthStencilDesc.SampleDesc.Quality = 0;
 		depthStencilDesc.MiscFlags = 0;
 
-		status = m_pDevice->CreateTexture2D(&depthStencilDesc, nullptr, &m_pDepthStencilBuffer);
+		status = m_pDevice->CreateTexture2D(&depthStencilDesc, NULL, &m_pDepthStencilBuffer);
 
 		if (FAILED(status))
 		{
@@ -360,14 +420,52 @@ VOID Renderer::Uninitialize()
 	m_pRenderTarget->Release();
 	m_pBackBuffer->Release();
 	m_pSwapChain->Release();
+	m_VertexShader->Release();
+	m_PixelShader->Release();
 	m_pContext->Release();
 	m_DebugInterface->Release();
 	m_pDevice->Release();
 }
 
+INT Renderer::CompileShaders()
+{
+	INT status = STATUS_SUCCESS;
+
+	ID3DBlob* vs_blob = NULL;
+	ID3DBlob* ps_blob = NULL;
+
+	if (SUCCEEDED(status))
+	{
+		status = D3DCompile(Data::VERTEX_SHADER, sizeof(Data::VERTEX_SHADER), "vertex_shader", NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS, 0, &vs_blob, nullptr);
+	}
+
+	if (SUCCEEDED(status))
+	{
+		status = D3DCompile(Data::PIXEL_SHADER, sizeof(Data::PIXEL_SHADER), "pixel_shader", NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS, 0, &ps_blob, nullptr);
+	}
+
+	if (SUCCEEDED(status))
+	{
+		m_pDevice->CreateVertexShader(vs_blob->GetBufferPointer(), vs_blob->GetBufferSize(), NULL, &m_VertexShader);
+	}
+
+	if (SUCCEEDED(status))
+	{
+		m_pDevice->CreatePixelShader(ps_blob->GetBufferPointer(), ps_blob->GetBufferSize(), NULL, &m_PixelShader);
+	}
+
+	if (FAILED(status))
+	{
+		vs_blob->Release();
+		ps_blob->Release();
+	}
+
+	return status;
+}
+
 INT main(INT argc, CHAR* argv[])
 {
-	INT status = 0;
+	INT status = STATUS_SUCCESS;
 
 	Window window;
 	Renderer renderer;
