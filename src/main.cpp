@@ -1,4 +1,7 @@
 
+// prevent redefinition of NTSTATUS messages
+#define UMDF_USING_NTSTATUS
+
 #include <Windows.h>
 
 #include <ntstatus.h>
@@ -251,6 +254,7 @@ public:
 
 private:
 	INT CompileShaders();
+	INT CompileShader(const char* pSrcData, size_t SrcDataSize, const char* pSourceName, const char* pEntrypoint, const char* pTarget, ID3DBlob** ppCode);
 };
 
 Renderer::Renderer()
@@ -410,6 +414,11 @@ INT Renderer::Initialize(HWND hWnd)
 		m_pContext->RSSetViewports(1, &viewport);
 	}
 
+	if (SUCCEEDED(status))
+	{
+		status = CompileShaders();
+	}
+
 	return status;
 }
 
@@ -427,6 +436,25 @@ VOID Renderer::Uninitialize()
 	m_pDevice->Release();
 }
 
+INT Renderer::CompileShader(const char* pSrcData, size_t SrcDataSize, const char* pSourceName, const char* pEntrypoint, const char* pTarget, ID3DBlob** ppCode)
+{
+	INT status = STATUS_SUCCESS;
+	ID3DBlob* errorBlob = NULL;
+
+	status = D3DCompile(pSrcData, SrcDataSize, pSourceName, NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, pEntrypoint, pTarget, D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS, 0, ppCode, &errorBlob);;
+
+	if (FAILED(status))
+	{
+		if (errorBlob != NULL)
+		{
+			WriteToConsole("%s\n", errorBlob->GetBufferPointer());
+			errorBlob->Release();
+		}
+	}
+
+	return status;
+}
+
 INT Renderer::CompileShaders()
 {
 	INT status = STATUS_SUCCESS;
@@ -436,12 +464,12 @@ INT Renderer::CompileShaders()
 
 	if (SUCCEEDED(status))
 	{
-		status = D3DCompile(Data::VERTEX_SHADER, sizeof(Data::VERTEX_SHADER), "vertex_shader", NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS, 0, &vs_blob, nullptr);
+		status = CompileShader(Data::VERTEX_SHADER, sizeof(Data::VERTEX_SHADER), "vertex_shader", "main", "vs_5_0", &vs_blob);
 	}
 
 	if (SUCCEEDED(status))
 	{
-		status = D3DCompile(Data::PIXEL_SHADER, sizeof(Data::PIXEL_SHADER), "pixel_shader", NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS, 0, &ps_blob, nullptr);
+		status = CompileShader(Data::PIXEL_SHADER, sizeof(Data::PIXEL_SHADER), "pixel_shader", "main", "ps_5_0", &ps_blob);
 	}
 
 	if (SUCCEEDED(status))
@@ -456,8 +484,15 @@ INT Renderer::CompileShaders()
 
 	if (FAILED(status))
 	{
-		vs_blob->Release();
-		ps_blob->Release();
+		if (vs_blob != NULL)
+		{
+			vs_blob->Release();
+		}
+
+		if (ps_blob != NULL)
+		{
+			ps_blob->Release();
+		}
 	}
 
 	return status;
