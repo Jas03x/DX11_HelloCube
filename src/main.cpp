@@ -22,7 +22,7 @@ const CHAR* WINDOW_NAME = "DirectX";
 
 VOID WriteToConsole(const char* fmt, ...)
 {
-	enum { BUFFER_SIZE = 256 };
+	enum { BUFFER_SIZE = 4096 };
 
 	DWORD length = 0;
 	CHAR  buffer[BUFFER_SIZE];
@@ -41,7 +41,7 @@ VOID WriteToConsole(const char* fmt, ...)
 
 namespace Data
 {
-	const char* VERTEX_SHADER =
+	const char VERTEX_SHADER[] =
 		"														"
 		"	cbuffer MatrixBuffer : register(b0)					"
 		"	{													"
@@ -69,7 +69,7 @@ namespace Data
 		"		return Output;									"
 		"	}													";
 
-	const char* PIXEL_SHADER =
+	const char PIXEL_SHADER[] =
 		"														"
 		"	struct PS_INPUT										"
 		"	{													"
@@ -490,7 +490,7 @@ INT Renderer::CompileShader(const char* pSrcData, size_t SrcDataSize, const char
 	INT status = STATUS_SUCCESS;
 	ID3DBlob* errorBlob = NULL;
 
-	status = D3DCompile(pSrcData, SrcDataSize, pSourceName, NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, pEntrypoint, pTarget, D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS, 0, ppCode, &errorBlob);;
+	status = D3DCompile(pSrcData, SrcDataSize, pSourceName, NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, pEntrypoint, pTarget, D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS, 0, ppCode, &errorBlob);
 
 	if (FAILED(status))
 	{
