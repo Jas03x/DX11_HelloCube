@@ -424,16 +424,65 @@ INT Renderer::Initialize(HWND hWnd)
 
 VOID Renderer::Uninitialize()
 {
-	m_pDepthStencilView->Release();
-	m_pDepthStencilBuffer->Release();
-	m_pRenderTarget->Release();
-	m_pBackBuffer->Release();
-	m_pSwapChain->Release();
-	m_VertexShader->Release();
-	m_PixelShader->Release();
-	m_pContext->Release();
-	m_DebugInterface->Release();
-	m_pDevice->Release();
+	if (m_pDepthStencilView != NULL)
+	{
+		m_pDepthStencilView->Release();
+		m_pDepthStencilView = NULL;
+	}
+
+	if (m_pDepthStencilBuffer != NULL)
+	{
+		m_pDepthStencilBuffer->Release();
+		m_pDepthStencilBuffer = NULL;
+	}
+
+	if (m_pRenderTarget != NULL)
+	{
+		m_pRenderTarget->Release();
+		m_pRenderTarget = NULL;
+	}
+
+	if (m_pBackBuffer != NULL)
+	{
+		m_pBackBuffer->Release();
+		m_pBackBuffer = NULL;
+	}
+
+	if (m_pSwapChain != NULL)
+	{
+		m_pSwapChain->Release();
+		m_pSwapChain = NULL;
+	}
+
+	if (m_VertexShader != NULL)
+	{
+		m_VertexShader->Release();
+		m_VertexShader = NULL;
+	}
+
+	if (m_PixelShader != NULL)
+	{
+		m_PixelShader->Release();
+		m_PixelShader = NULL;
+	}
+
+	if (m_pContext != NULL)
+	{
+		m_pContext->Release();
+		m_pContext = NULL;
+	}
+
+	if (m_DebugInterface != NULL)
+	{
+		m_DebugInterface->Release();
+		m_DebugInterface = NULL;
+	}
+
+	if (m_pDevice != NULL)
+	{
+		m_pDevice->Release();
+		m_pDevice = NULL;
+	}
 }
 
 INT Renderer::CompileShader(const char* pSrcData, size_t SrcDataSize, const char* pSourceName, const char* pEntrypoint, const char* pTarget, ID3DBlob** ppCode)
