@@ -712,14 +712,17 @@ INT Renderer::Render()
 
 	m_pContext->OMSetRenderTargets(1, &m_pRenderTargetView, m_pDepthStencilView);
 
-	UINT strides[] = { 0 };
+	UINT strides[] = { sizeof(Data::Vertex) };
 	UINT offsets[] = { 0 };
 	m_pContext->IASetVertexBuffers(0, 1, &m_pVertexBuffer, strides, offsets);
 	m_pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	m_pContext->IASetInputLayout(m_pVertexShaderInputLayout);
 
 	m_pContext->VSSetShader(m_pVertexShader, NULL, 0);
+	m_pContext->VSSetConstantBuffers(0, 1, &m_pMatrixBuffer);
+	
 	m_pContext->PSSetShader(m_pPixelShader,  NULL, 0);
+
 	m_pContext->Draw(m_VertexCount, 0);
 
 	m_pSwapChain->Present(1, 0);
