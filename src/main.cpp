@@ -93,6 +93,8 @@ namespace Data
 		"		return Output;									\n"
 		"	}													\n";
 
+	float ClearColor[4] = { 1.0, 1.0, 1.0, 1.0 };
+
 	struct MatrixBuffer
 	{
 		float mvp[16];
@@ -139,7 +141,6 @@ namespace Data
 		{ V6, C0 }, { V5, C0 }, { V4, C0 },
 		{ V5, C0 }, { V6, C0 }, { V7, C0 }
 	};
-
 }
 
 class Window
@@ -291,15 +292,15 @@ private:
 	ID3D11DeviceContext*    m_pContext;
 	IDXGISwapChain*         m_pSwapChain;
 	ID3D11Texture2D*        m_pBackBuffer;
-	ID3D11RenderTargetView* m_pRenderTarget;
+	ID3D11RenderTargetView* m_pRenderTargetView;
 	ID3D11Texture2D*        m_pDepthStencilBuffer;
 	ID3D11DepthStencilView* m_pDepthStencilView;
-	ID3D11Debug*            m_DebugInterface;
-	ID3D11VertexShader*		m_VertexShader;
-	ID3D11PixelShader*		m_PixelShader;
-	ID3D11Buffer*           m_VertexBuffer;
-	ID3D11Buffer*           m_MatrixBuffer;
-	ID3D11InputLayout*      m_VertexShaderInputLayout;
+	ID3D11Debug*            m_pDebugInterface;
+	ID3D11VertexShader*		m_pVertexShader;
+	ID3D11PixelShader*		m_pPixelShader;
+	ID3D11Buffer*           m_pVertexBuffer;
+	ID3D11Buffer*           m_pMatrixBuffer;
+	ID3D11InputLayout*      m_pVertexShaderInputLayout;
 
 	unsigned int            m_VertexCount;
 
@@ -326,15 +327,15 @@ Renderer::Renderer()
 	m_pContext = NULL;
 	m_pSwapChain = NULL;
 	m_pBackBuffer = NULL;
-	m_pRenderTarget = NULL;
+	m_pRenderTargetView = NULL;
 	m_pDepthStencilBuffer = NULL;
 	m_pDepthStencilView = NULL;
-	m_DebugInterface = NULL;
-	m_VertexShader = NULL;
-	m_PixelShader = NULL;
-	m_VertexBuffer = NULL;
-	m_MatrixBuffer = NULL;
-	m_VertexShaderInputLayout = NULL;
+	m_pDebugInterface = NULL;
+	m_pVertexShader = NULL;
+	m_pPixelShader = NULL;
+	m_pVertexBuffer = NULL;
+	m_pMatrixBuffer = NULL;
+	m_pVertexShaderInputLayout = NULL;
 }
 
 INT Renderer::Initialize(HWND hWnd)
@@ -358,9 +359,9 @@ INT Renderer::Initialize(HWND hWnd)
 
 	if (SUCCEEDED(status))
 	{
-		m_pDevice->QueryInterface(__uuidof(ID3D11Debug), reinterpret_cast<void**>(&m_DebugInterface));
+		m_pDevice->QueryInterface(__uuidof(ID3D11Debug), reinterpret_cast<void**>(&m_pDebugInterface));
 	
-		if (m_DebugInterface == NULL)
+		if (m_pDebugInterface == NULL)
 		{
 			status = STATUS_UNSUCCESSFUL;
 			WriteToConsole("error 0x%X: could not get the dx11 debug interface\n", status);
@@ -419,7 +420,7 @@ INT Renderer::Initialize(HWND hWnd)
 
 	if (SUCCEEDED(status))
 	{
-		status = m_pDevice->CreateRenderTargetView(m_pBackBuffer, NULL, &m_pRenderTarget);
+		status = m_pDevice->CreateRenderTargetView(m_pBackBuffer, NULL, &m_pRenderTargetView);
 
 		if (FAILED(status))
 		{
@@ -495,22 +496,22 @@ INT Renderer::Initialize(HWND hWnd)
 
 VOID Renderer::Uninitialize()
 {
-	if (m_VertexShaderInputLayout != NULL)
+	if (m_pVertexShaderInputLayout != NULL)
 	{
-		m_VertexShaderInputLayout->Release();
-		m_VertexShaderInputLayout = NULL;
+		m_pVertexShaderInputLayout->Release();
+		m_pVertexShaderInputLayout = NULL;
 	}
 
-	if (m_VertexBuffer != NULL)
+	if (m_pVertexBuffer != NULL)
 	{
-		m_VertexBuffer->Release();
-		m_VertexBuffer = NULL;
+		m_pVertexBuffer->Release();
+		m_pVertexBuffer = NULL;
 	}
 
-	if (m_MatrixBuffer != NULL)
+	if (m_pMatrixBuffer != NULL)
 	{
-		m_MatrixBuffer->Release();
-		m_MatrixBuffer = NULL;
+		m_pMatrixBuffer->Release();
+		m_pMatrixBuffer = NULL;
 	}
 
 	if (m_pDepthStencilView != NULL)
@@ -525,10 +526,10 @@ VOID Renderer::Uninitialize()
 		m_pDepthStencilBuffer = NULL;
 	}
 
-	if (m_pRenderTarget != NULL)
+	if (m_pRenderTargetView != NULL)
 	{
-		m_pRenderTarget->Release();
-		m_pRenderTarget = NULL;
+		m_pRenderTargetView->Release();
+		m_pRenderTargetView = NULL;
 	}
 
 	if (m_pBackBuffer != NULL)
@@ -543,16 +544,16 @@ VOID Renderer::Uninitialize()
 		m_pSwapChain = NULL;
 	}
 
-	if (m_VertexShader != NULL)
+	if (m_pVertexShader != NULL)
 	{
-		m_VertexShader->Release();
-		m_VertexShader = NULL;
+		m_pVertexShader->Release();
+		m_pVertexShader = NULL;
 	}
 
-	if (m_PixelShader != NULL)
+	if (m_pPixelShader != NULL)
 	{
-		m_PixelShader->Release();
-		m_PixelShader = NULL;
+		m_pPixelShader->Release();
+		m_pPixelShader = NULL;
 	}
 
 	if (m_pContext != NULL)
@@ -561,10 +562,10 @@ VOID Renderer::Uninitialize()
 		m_pContext = NULL;
 	}
 
-	if (m_DebugInterface != NULL)
+	if (m_pDebugInterface != NULL)
 	{
-		m_DebugInterface->Release();
-		m_DebugInterface = NULL;
+		m_pDebugInterface->Release();
+		m_pDebugInterface = NULL;
 	}
 
 	if (m_pDevice != NULL)
@@ -609,7 +610,7 @@ INT Renderer::CompileShaders()
 	// create the vertex shader
 	if (SUCCEEDED(status))
 	{
-		m_pDevice->CreateVertexShader(vs_blob->GetBufferPointer(), vs_blob->GetBufferSize(), NULL, &m_VertexShader);
+		m_pDevice->CreateVertexShader(vs_blob->GetBufferPointer(), vs_blob->GetBufferSize(), NULL, &m_pVertexShader);
 	}
 
 	// create the vertex shader's input layout
@@ -620,7 +621,7 @@ INT Renderer::CompileShaders()
 			{ "COLOR",    0, DXGI_FORMAT_R32G32B32_FLOAT, 0, sizeof(float) * 3, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 		};
 
-		status = m_pDevice->CreateInputLayout(iaDesc, ARRAYSIZE(iaDesc), vs_blob->GetBufferPointer(), vs_blob->GetBufferSize(), &m_VertexShaderInputLayout);
+		status = m_pDevice->CreateInputLayout(iaDesc, ARRAYSIZE(iaDesc), vs_blob->GetBufferPointer(), vs_blob->GetBufferSize(), &m_pVertexShaderInputLayout);
 	}
 
 	// create the buffer for the vertex shader's matrix constant buffer
@@ -634,7 +635,7 @@ INT Renderer::CompileShaders()
 		cbDesc.MiscFlags = 0;
 		cbDesc.StructureByteStride = 0;
 
-		status = m_pDevice->CreateBuffer(&cbDesc, NULL, &m_MatrixBuffer);
+		status = m_pDevice->CreateBuffer(&cbDesc, NULL, &m_pMatrixBuffer);
 	}
 
 	// compile the pixel shader
@@ -646,7 +647,7 @@ INT Renderer::CompileShaders()
 	// create the pixel shader
 	if (SUCCEEDED(status))
 	{
-		m_pDevice->CreatePixelShader(ps_blob->GetBufferPointer(), ps_blob->GetBufferSize(), NULL, &m_PixelShader);
+		m_pDevice->CreatePixelShader(ps_blob->GetBufferPointer(), ps_blob->GetBufferSize(), NULL, &m_pPixelShader);
 	}
 
 	// free the blobs
@@ -687,7 +688,7 @@ INT Renderer::GenerateBuffers()
 
 	if (SUCCEEDED(status))
 	{
-		status = m_pDevice->CreateBuffer(&vDesc, &vData, &m_VertexBuffer);
+		status = m_pDevice->CreateBuffer(&vDesc, &vData, &m_pVertexBuffer);
 	}
 
 	return status;
@@ -697,7 +698,29 @@ INT Renderer::Render()
 {
 	INT status = STATUS_SUCCESS;
 
+	Data::MatrixBuffer matrix_buffer = { { 
+		1, 0, 0, 0,
+		0, 1, 0, 0,
+		0, 0, 1, 0,
+		0, 0, 0, 1
+	} };
 
+	m_pContext->UpdateSubresource(m_pMatrixBuffer, 0, NULL, &matrix_buffer, 0, 0);
+
+	m_pContext->ClearRenderTargetView(m_pRenderTargetView, Data::ClearColor);
+	m_pContext->ClearDepthStencilView(m_pDepthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0, 0);
+
+	m_pContext->OMSetRenderTargets(1, &m_pRenderTargetView, m_pDepthStencilView);
+
+	UINT strides[] = { 0 };
+	UINT offsets[] = { 0 };
+	m_pContext->IASetVertexBuffers(0, 1, &m_pVertexBuffer, strides, offsets);
+	m_pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	m_pContext->IASetInputLayout(m_pVertexShaderInputLayout);
+
+	m_pContext->VSSetShader(m_pVertexShader, NULL, 0);
+	m_pContext->PSSetShader(m_pPixelShader,  NULL, 0);
+	m_pContext->Draw(m_VertexCount, 0);
 
 	return status;
 }
