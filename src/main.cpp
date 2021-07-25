@@ -51,11 +51,13 @@ namespace Data
 		"	struct VS_INPUT										\n"
 		"	{													\n"
 		"		float3 vertex : POSITION;						\n"
+		"		float3 color  : COLOR0;							\n"
 		"	};													\n"
 		"														\n"
 		"	struct VS_OUTPUT									\n"
 		"	{													\n"
 		"		float4 vertex : SV_POSITION;					\n"
+		"		float4 color  : COLOR0;							\n"
 		"	};													\n"
 		"														\n"
 		"	VS_OUTPUT main(VS_INPUT input)						\n"
@@ -66,6 +68,7 @@ namespace Data
 		"		vertex = mul(vertex, mvp);						\n"
 		"														\n"
 		"		Output.vertex = vertex;							\n"
+		"		Output.color  = float4(input.color, 1.0);		\n"
 		"		return Output;									\n"
 		"	}													\n";
 
@@ -74,20 +77,26 @@ namespace Data
 		"	struct PS_INPUT										\n"
 		"	{													\n"
 		"		float4 vertex : SV_POSITION;					\n"
+		"		float4 color  : COLOR0;							\n"
 		"	};													\n"
 		"														\n"
 		"	struct PS_OUTPUT									\n"
 		"	{													\n"
-		"		float3 color  : SV_TARGET;						\n"
+		"		float4 color  : SV_TARGET;						\n"
 		"	};													\n"
 		"														\n"
 		"	PS_OUTPUT main(PS_INPUT input)						\n"
 		"	{													\n"
 		"		PS_OUTPUT Output;								\n"
 		"														\n"
-		"		Output.color  = float3(1,0,1);					\n"
+		"		Output.color  = input.color;					\n"
 		"		return Output;									\n"
 		"	}													\n";
+
+	struct Vertex
+	{
+		float p_x, p_y, p_z;
+	};
 }
 
 class Window
