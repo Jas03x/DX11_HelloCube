@@ -722,6 +722,8 @@ INT Renderer::Render()
 	m_pContext->PSSetShader(m_pPixelShader,  NULL, 0);
 	m_pContext->Draw(m_VertexCount, 0);
 
+	m_pSwapChain->Present(1, 0);
+
 	return status;
 }
 
