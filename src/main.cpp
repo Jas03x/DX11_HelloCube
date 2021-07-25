@@ -95,8 +95,46 @@ namespace Data
 
 	struct Vertex
 	{
-		float p_x, p_y, p_z;
+		float position[3];
+		float color[3];
 	};
+
+	/*
+	*      2 ______________ 3
+	*       /|            /|
+	*      / |           / |
+	*   6 /__|__________/ 7|
+	*    |	 |          |  |
+	*    | 0 |__________|__| 1
+	*    |	/           |  /
+	*    | /            | /
+	*    |/_____________|/
+	*    4              5
+	*/
+
+	#define V0 { -1, -1, -1 }
+	#define V1 { +1, -1, -1 }
+	#define V2 { -1, +1, -1 }
+	#define V3 { +1, +1, -1 }
+	#define V4 { -1, -1, +1 }
+	#define V5 { +1, -1, +1 }
+	#define V6 { -1, +1, +1 }
+	#define V7 { +1, +1, +1 }
+
+	#define C0 { 1.0, 0.0, 0.0 }
+	#define C1 { 0.0, 1.0, 0.0 }
+	#define C2 { 0.0, 0.0, 1.0 }
+	#define C3 { 0.5, 0.5, 0.0 }
+	#define C4 { 0.5, 0.0, 0.5 }
+	#define C5 { 0.0, 0.5, 0.5 }
+
+	Vertex Vertices[] =
+	{
+		// front
+		{ V4, C0 }, { V5, C0 }, { V6, C0 },
+		{ V5, C0 }, { V6, C0 }, { V7, C0 }
+	};
+
 }
 
 class Window
