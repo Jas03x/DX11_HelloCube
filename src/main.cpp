@@ -93,6 +93,11 @@ namespace Data
 		"		return Output;									\n"
 		"	}													\n";
 
+	struct MatrixBuffer
+	{
+		float mvp[16];
+	};
+
 	struct Vertex
 	{
 		float position[3];
@@ -293,6 +298,8 @@ private:
 	ID3D11VertexShader*		m_VertexShader;
 	ID3D11PixelShader*		m_PixelShader;
 	ID3D11Buffer*           m_VertexBuffer;
+	ID3D11Buffer*           m_MatrixBuffer;
+	ID3D11InputLayout*      m_VertexShaderInputLayout;
 
 	unsigned int            m_VertexCount;
 
@@ -326,6 +333,8 @@ Renderer::Renderer()
 	m_VertexShader = NULL;
 	m_PixelShader = NULL;
 	m_VertexBuffer = NULL;
+	m_MatrixBuffer = NULL;
+	m_VertexShaderInputLayout = NULL;
 }
 
 INT Renderer::Initialize(HWND hWnd)
@@ -486,10 +495,22 @@ INT Renderer::Initialize(HWND hWnd)
 
 VOID Renderer::Uninitialize()
 {
+	if (m_VertexShaderInputLayout != NULL)
+	{
+		m_VertexShaderInputLayout->Release();
+		m_VertexShaderInputLayout = NULL;
+	}
+
 	if (m_VertexBuffer != NULL)
 	{
 		m_VertexBuffer->Release();
 		m_VertexBuffer = NULL;
+	}
+
+	if (m_MatrixBuffer != NULL)
+	{
+		m_MatrixBuffer->Release();
+		m_MatrixBuffer = NULL;
 	}
 
 	if (m_pDepthStencilView != NULL)
@@ -579,26 +600,56 @@ INT Renderer::CompileShaders()
 	ID3DBlob* vs_blob = NULL;
 	ID3DBlob* ps_blob = NULL;
 
+	// compile the vertex shader
 	if (SUCCEEDED(status))
 	{
 		status = CompileShader(Data::VERTEX_SHADER, sizeof(Data::VERTEX_SHADER), "vertex_shader", "main", "vs_5_0", &vs_blob);
 	}
 
-	if (SUCCEEDED(status))
-	{
-		status = CompileShader(Data::PIXEL_SHADER, sizeof(Data::PIXEL_SHADER), "pixel_shader", "main", "ps_5_0", &ps_blob);
-	}
-
+	// create the vertex shader
 	if (SUCCEEDED(status))
 	{
 		m_pDevice->CreateVertexShader(vs_blob->GetBufferPointer(), vs_blob->GetBufferSize(), NULL, &m_VertexShader);
 	}
 
+	// create the vertex shader's input layout
+	if (SUCCEEDED(status))
+	{
+		D3D11_INPUT_ELEMENT_DESC iaDesc[] = {
+			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,                 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "COLOR",    0, DXGI_FORMAT_R32G32B32_FLOAT, 0, sizeof(float) * 3, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+		};
+
+		status = m_pDevice->CreateInputLayout(iaDesc, ARRAYSIZE(iaDesc), vs_blob->GetBufferPointer(), vs_blob->GetBufferSize(), &m_VertexShaderInputLayout);
+	}
+
+	// create the buffer for the vertex shader's matrix constant buffer
+	if (SUCCEEDED(status))
+	{
+		D3D11_BUFFER_DESC cbDesc;
+		cbDesc.ByteWidth = sizeof(Data::MatrixBuffer);
+		cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		cbDesc.Usage = D3D11_USAGE_DEFAULT;
+		cbDesc.CPUAccessFlags = 0;
+		cbDesc.MiscFlags = 0;
+		cbDesc.StructureByteStride = 0;
+
+		status = m_pDevice->CreateBuffer(&cbDesc, NULL, &m_MatrixBuffer);
+	}
+
+	// compile the pixel shader
+	if (SUCCEEDED(status))
+	{
+		status = CompileShader(Data::PIXEL_SHADER, sizeof(Data::PIXEL_SHADER), "pixel_shader", "main", "ps_5_0", &ps_blob);
+	}
+
+	// create the pixel shader
 	if (SUCCEEDED(status))
 	{
 		m_pDevice->CreatePixelShader(ps_blob->GetBufferPointer(), ps_blob->GetBufferSize(), NULL, &m_PixelShader);
 	}
 
+	// free the blobs
 	if (FAILED(status))
 	{
 		if (vs_blob != NULL)
