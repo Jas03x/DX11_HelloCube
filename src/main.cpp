@@ -131,7 +131,7 @@ namespace Data
 	Vertex Vertices[] =
 	{
 		// front
-		{ V4, C0 }, { V5, C0 }, { V6, C0 },
+		{ V6, C0 }, { V5, C0 }, { V4, C0 },
 		{ V5, C0 }, { V6, C0 }, { V7, C0 }
 	};
 
@@ -292,6 +292,9 @@ private:
 	ID3D11Debug*            m_DebugInterface;
 	ID3D11VertexShader*		m_VertexShader;
 	ID3D11PixelShader*		m_PixelShader;
+	ID3D11Buffer*           m_VertexBuffer;
+
+	unsigned int            m_VertexCount;
 
 public:
 	Renderer();
@@ -299,13 +302,19 @@ public:
 	INT  Initialize(HWND hWnd);
 	VOID Uninitialize();
 
+	INT  Render();
+
 private:
-	INT CompileShaders();
 	INT CompileShader(const char* pSrcData, size_t SrcDataSize, const char* pSourceName, const char* pEntrypoint, const char* pTarget, ID3DBlob** ppCode);
+
+	INT CompileShaders();
+	INT GenerateBuffers();
 };
 
 Renderer::Renderer()
 {
+	m_VertexCount = 0;
+
 	m_pDevice = NULL;
 	m_pContext = NULL;
 	m_pSwapChain = NULL;
@@ -316,6 +325,7 @@ Renderer::Renderer()
 	m_DebugInterface = NULL;
 	m_VertexShader = NULL;
 	m_PixelShader = NULL;
+	m_VertexBuffer = NULL;
 }
 
 INT Renderer::Initialize(HWND hWnd)
@@ -466,11 +476,22 @@ INT Renderer::Initialize(HWND hWnd)
 		status = CompileShaders();
 	}
 
+	if (SUCCEEDED(status))
+	{
+		status = GenerateBuffers();
+	}
+
 	return status;
 }
 
 VOID Renderer::Uninitialize()
 {
+	if (m_VertexBuffer != NULL)
+	{
+		m_VertexBuffer->Release();
+		m_VertexBuffer = NULL;
+	}
+
 	if (m_pDepthStencilView != NULL)
 	{
 		m_pDepthStencilView->Release();
@@ -594,6 +615,42 @@ INT Renderer::CompileShaders()
 	return status;
 }
 
+INT Renderer::GenerateBuffers()
+{
+	INT status = STATUS_SUCCESS;
+
+	D3D11_BUFFER_DESC vDesc;
+	vDesc.ByteWidth = sizeof(Data::Vertices);
+	vDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	vDesc.Usage = D3D11_USAGE_DEFAULT;
+	vDesc.CPUAccessFlags = 0;
+	vDesc.MiscFlags = 0;
+	vDesc.StructureByteStride = 0;
+
+	D3D11_SUBRESOURCE_DATA vData;
+	vData.pSysMem = Data::Vertices;
+	vData.SysMemPitch = 0;
+	vData.SysMemSlicePitch = 0;
+
+	m_VertexCount = ARRAYSIZE(Data::Vertices);
+
+	if (SUCCEEDED(status))
+	{
+		status = m_pDevice->CreateBuffer(&vDesc, &vData, &m_VertexBuffer);
+	}
+
+	return status;
+}
+
+INT Renderer::Render()
+{
+	INT status = STATUS_SUCCESS;
+
+
+
+	return status;
+}
+
 INT main(INT argc, CHAR* argv[])
 {
 	INT status = STATUS_SUCCESS;
@@ -625,7 +682,7 @@ INT main(INT argc, CHAR* argv[])
 			}
 			else
 			{
-				// render
+				renderer.Render();
 			}
 		}
 	}
