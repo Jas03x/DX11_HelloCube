@@ -93,7 +93,7 @@ namespace Data
 		"		return Output;									\n"
 		"	}													\n";
 
-	float ClearColor[4] = { 1.0, 1.0, 1.0, 1.0 };
+	const float ClearColor[4] = { 1.0, 1.0, 1.0, 1.0 };
 
 	struct MatrixBuffer
 	{
@@ -135,11 +135,15 @@ namespace Data
 	#define C4 { 0.5, 0.0, 0.5 }
 	#define C5 { 0.0, 0.5, 0.5 }
 
-	Vertex Vertices[] =
+	const Vertex Vertices[] =
 	{
 		// front
 		{ V6, C0 }, { V5, C0 }, { V4, C0 },
-		{ V5, C0 }, { V6, C0 }, { V7, C0 }
+		{ V5, C0 }, { V6, C0 }, { V7, C0 },
+
+		// back
+		{ V2, C1 }, { V1, C1 }, { V0, C1 },
+		{ V1, C1 }, { V2, C1 }, { V3, C1 }
 	};
 }
 
