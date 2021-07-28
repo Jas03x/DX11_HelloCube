@@ -89,7 +89,7 @@ namespace Data
 		"	{													\n"
 		"		PS_OUTPUT Output;								\n"
 		"														\n"
-		"		Output.color  = input.color;					\n"
+		"		Output.color = input.color;						\n"
 		"		return Output;									\n"
 		"	}													\n";
 
@@ -143,7 +143,23 @@ namespace Data
 
 		// back
 		{ V2, C1 }, { V1, C1 }, { V0, C1 },
-		{ V1, C1 }, { V2, C1 }, { V3, C1 }
+		{ V1, C1 }, { V2, C1 }, { V3, C1 },
+
+		// top
+		{ V6, C2 }, { V2, C2 }, { V7, C2 },
+		{ V2, C2 }, { V3, C2 }, { V7, C2 },
+
+		// bottom
+		{ V4, C3 }, { V0, C3 }, { V5, C3 },
+		{ V0, C3 }, { V1, C3 }, { V5, C3 },
+
+		// right
+		{ V5, C4 }, { V7, C4 }, { V1, C4 },
+		{ V1, C4 }, { V7, C4 }, { V3, C4 },
+
+		// left
+		{ V4, C5 }, { V6, C5 }, { V0, C5 },
+		{ V0, C5 }, { V6, C5 }, { V2, C5 }
 	};
 }
 
