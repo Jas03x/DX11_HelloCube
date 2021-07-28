@@ -119,14 +119,14 @@ namespace Data
 	*    4              5
 	*/
 
-	#define V0 { -1, -1, -1 }
-	#define V1 { +1, -1, -1 }
-	#define V2 { -1, +1, -1 }
-	#define V3 { +1, +1, -1 }
-	#define V4 { -1, -1, +1 }
-	#define V5 { +1, -1, +1 }
-	#define V6 { -1, +1, +1 }
-	#define V7 { +1, +1, +1 }
+	#define V0 { -0.5, -0.5, -0.5 }
+	#define V1 { +0.5, -0.5, -0.5 }
+	#define V2 { -0.5, +0.5, -0.5 }
+	#define V3 { +0.5, +0.5, -0.5 }
+	#define V4 { -0.5, -0.5, +0.5 }
+	#define V5 { +0.5, -0.5, +0.5 }
+	#define V6 { -0.5, +0.5, +0.5 }
+	#define V7 { +0.5, +0.5, +0.5 }
 
 	#define C0 { 1.0, 0.0, 0.0 }
 	#define C1 { 0.0, 1.0, 0.0 }
