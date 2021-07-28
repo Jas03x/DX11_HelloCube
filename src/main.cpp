@@ -2,6 +2,9 @@
 // prevent redefinition of NTSTATUS messages
 #define UMDF_USING_NTSTATUS
 
+// prevent minwindef from defining min/max
+#define NOMINMAX
+
 #include <Windows.h>
 
 #include <ntstatus.h>
@@ -10,11 +13,15 @@
 #include <dxgi1_3.h>
 #include <d3dcompiler.h>
 
+#define _USE_MATH_DEFINES
+#include <cmath>
+
+#include <random>
 #include <string>
 
 enum {
-	WIDTH  = 1280,
-	HEIGHT =  720
+	WIDTH  = 512,
+	HEIGHT = 512
 };
 
 const CHAR* CLASS_NAME  = "DxClass";
@@ -39,13 +46,65 @@ VOID WriteToConsole(const char* fmt, ...)
 	}
 }
 
+namespace Matrix
+{
+	void ToIdentity(float* m)
+	{
+		ZeroMemory(m, sizeof(float) * 16);
+
+		float(*_m)[4] = reinterpret_cast<float(*)[4]>(m);
+		_m[0][0] = 1.0f;
+		_m[1][1] = 1.0f;
+		_m[2][2] = 1.0f;
+		_m[3][3] = 1.0f;
+	}
+
+	void Copy(float* m0, const float* m1)
+	{
+		CopyMemory(m0, m1, sizeof(float) * 16);
+	}
+
+	void Multiply(const float* m0, const float* m1, float* m2)
+	{
+		const float(*_m0)[4] = reinterpret_cast<const float(*)[4]>(m0);
+		const float(*_m1)[4] = reinterpret_cast<const float(*)[4]>(m1);
+		float(*_m2)[4] = reinterpret_cast<float(*)[4]>(m2);
+
+	#define _DOT4(x0, y0, z0, w0, x1, y1, z1, w1) ((x0) * (x1) + (y0) * (y1) + (z0) * (z1) + (w0) * (w1))
+	#define _DOT(m, m0, m1, r, c) (m)[c][r] = _DOT4((m0)[0][r], (m0)[1][r], (m0)[2][r], (m0)[3][r], (m1)[c][0], (m1)[c][1], (m1)[c][2], (m1)[c][3])
+
+		_DOT(_m2, _m0, _m1, 0, 0);
+		_DOT(_m2, _m0, _m1, 0, 1);
+		_DOT(_m2, _m0, _m1, 0, 2);
+		_DOT(_m2, _m0, _m1, 0, 3);
+
+		_DOT(_m2, _m0, _m1, 1, 0);
+		_DOT(_m2, _m0, _m1, 1, 1);
+		_DOT(_m2, _m0, _m1, 1, 2);
+		_DOT(_m2, _m0, _m1, 1, 3);
+
+		_DOT(_m2, _m0, _m1, 2, 0);
+		_DOT(_m2, _m0, _m1, 2, 1);
+		_DOT(_m2, _m0, _m1, 2, 2);
+		_DOT(_m2, _m0, _m1, 2, 3);
+
+		_DOT(_m2, _m0, _m1, 3, 0);
+		_DOT(_m2, _m0, _m1, 3, 1);
+		_DOT(_m2, _m0, _m1, 3, 2);
+		_DOT(_m2, _m0, _m1, 3, 3);
+
+	#undef _DOT
+	#undef _DOT4
+	}
+}
+
 namespace Data
 {
 	const char VERTEX_SHADER[] =
 		"														\n"
 		"	cbuffer MatrixBuffer : register(b0)					\n"
 		"	{													\n"
-		"		matrix mvp;										\n"
+		"		matrix model_matrix;							\n"
 		"	};													\n"
 		"														\n"
 		"	struct VS_INPUT										\n"
@@ -65,7 +124,7 @@ namespace Data
 		"		VS_OUTPUT Output;								\n"
 		"														\n"
 		"		float4 vertex = float4(input.vertex, 1.0);		\n"
-		"		vertex = mul(vertex, mvp);						\n"
+		"		vertex = mul(vertex, model_matrix);				\n"
 		"														\n"
 		"		Output.vertex = vertex;							\n"
 		"		Output.color  = float4(input.color, 1.0);		\n"
@@ -97,7 +156,7 @@ namespace Data
 
 	struct MatrixBuffer
 	{
-		float mvp[16];
+		float model_matrix[16];
 	};
 
 	struct Vertex
@@ -308,21 +367,27 @@ HWND Window::GetWindowHandle()
 class Renderer
 {
 private:
-	ID3D11Device*           m_pDevice;
-	ID3D11DeviceContext*    m_pContext;
-	IDXGISwapChain*         m_pSwapChain;
-	ID3D11Texture2D*        m_pBackBuffer;
-	ID3D11RenderTargetView* m_pRenderTargetView;
-	ID3D11Texture2D*        m_pDepthStencilBuffer;
-	ID3D11DepthStencilView* m_pDepthStencilView;
-	ID3D11Debug*            m_pDebugInterface;
-	ID3D11VertexShader*		m_pVertexShader;
-	ID3D11PixelShader*		m_pPixelShader;
-	ID3D11Buffer*           m_pVertexBuffer;
-	ID3D11Buffer*           m_pMatrixBuffer;
-	ID3D11InputLayout*      m_pVertexShaderInputLayout;
+	ID3D11Device*              m_pDevice;
+	ID3D11DeviceContext*       m_pContext;
+	IDXGISwapChain*            m_pSwapChain;
+	ID3D11Texture2D*           m_pBackBuffer;
+	ID3D11RenderTargetView*    m_pRenderTargetView;
+	ID3D11Texture2D*           m_pDepthStencilBuffer;
+	ID3D11DepthStencilView*    m_pDepthStencilView;
+	ID3D11Debug*               m_pDebugInterface;
+	ID3D11VertexShader*		   m_pVertexShader;
+	ID3D11PixelShader*		   m_pPixelShader;
+	ID3D11Buffer*              m_pVertexBuffer;
+	ID3D11Buffer*              m_pMatrixBuffer;
+	ID3D11InputLayout*         m_pVertexShaderInputLayout;
 
-	unsigned int            m_VertexCount;
+	unsigned int               m_VertexCount;
+	
+	unsigned int               m_FrameTracker;
+	float                      m_RotationMatrix[16];
+	Data::MatrixBuffer         m_MatrixBuffer;
+
+	std::default_random_engine m_Generator;
 
 public:
 	Renderer();
@@ -330,6 +395,7 @@ public:
 	INT  Initialize(HWND hWnd);
 	VOID Uninitialize();
 
+	INT  Update();
 	INT  Render();
 
 private:
@@ -341,8 +407,6 @@ private:
 
 Renderer::Renderer()
 {
-	m_VertexCount = 0;
-
 	m_pDevice = NULL;
 	m_pContext = NULL;
 	m_pSwapChain = NULL;
@@ -356,6 +420,12 @@ Renderer::Renderer()
 	m_pVertexBuffer = NULL;
 	m_pMatrixBuffer = NULL;
 	m_pVertexShaderInputLayout = NULL;
+
+	m_VertexCount = 0;
+	m_FrameTracker = 0xFFFFFFFF;
+
+	Matrix::ToIdentity(m_RotationMatrix);
+	Matrix::ToIdentity(m_MatrixBuffer.model_matrix);
 }
 
 INT Renderer::Initialize(HWND hWnd)
@@ -714,18 +784,51 @@ INT Renderer::GenerateBuffers()
 	return status;
 }
 
+INT Renderer::Update()
+{
+	INT status = STATUS_SUCCESS;
+
+	const unsigned int ROTATION_INTERVAL = 180; // the rotation changes every 180 frames
+
+	if (m_FrameTracker < ROTATION_INTERVAL)
+	{
+		float current_rotation[16];
+		Matrix::Copy(current_rotation, m_MatrixBuffer.model_matrix);
+
+		Matrix::Multiply(current_rotation, m_RotationMatrix, m_MatrixBuffer.model_matrix);
+
+		m_FrameTracker++;
+	}
+	else
+	{
+		float r_x = (static_cast<float>(m_Generator()) / static_cast<float>(m_Generator.max())) * M_PI / ROTATION_INTERVAL;
+		float r_y = (static_cast<float>(m_Generator()) / static_cast<float>(m_Generator.max())) * M_PI / ROTATION_INTERVAL;
+		float r_z = (static_cast<float>(m_Generator()) / static_cast<float>(m_Generator.max())) * M_PI / ROTATION_INTERVAL;
+
+		float c_x = std::cos(r_x), s_x = std::sin(r_x);
+		float c_y = std::cos(r_y), s_y = std::sin(r_y);
+		float c_z = std::cos(r_z), s_z = std::sin(r_z);
+
+		float rotation[16] = {
+			c_x * c_y, c_x * s_y * s_z - s_x * c_z, c_x * s_y * c_z + s_x * s_z, 0,
+			s_x * c_y, s_x * s_y * s_z + c_x * c_z, s_x * s_y * c_z - c_x * s_z, 0,
+			-s_y, c_y * s_z, c_y * c_z, 0,
+			0, 0, 0, 1
+		};
+
+		Matrix::Copy(m_RotationMatrix, rotation);
+
+		m_FrameTracker = 0;
+	}
+
+	return status;
+}
+
 INT Renderer::Render()
 {
 	INT status = STATUS_SUCCESS;
 
-	Data::MatrixBuffer matrix_buffer = { { 
-		1, 0, 0, 0,
-		0, 1, 0, 0,
-		0, 0, 1, 0,
-		0, 0, 0, 1
-	} };
-
-	m_pContext->UpdateSubresource(m_pMatrixBuffer, 0, NULL, &matrix_buffer, 0, 0);
+	m_pContext->UpdateSubresource(m_pMatrixBuffer, 0, NULL, &m_MatrixBuffer, 0, 0);
 
 	m_pContext->ClearRenderTargetView(m_pRenderTargetView, Data::ClearColor);
 	m_pContext->ClearDepthStencilView(m_pDepthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0, 0);
@@ -781,6 +884,7 @@ INT main(INT argc, CHAR* argv[])
 			}
 			else
 			{
+				renderer.Update();
 				renderer.Render();
 			}
 		}
